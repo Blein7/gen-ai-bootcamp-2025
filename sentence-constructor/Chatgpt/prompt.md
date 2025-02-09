@@ -23,8 +23,6 @@ The formatted output will generally contain three parts:
 - the table of of vocabulary should only have the following columns: Japanese, Romaji, English
 - Do not provide particles in the vocabulary table, student needs to figure the correct particles to use
 ### Sentence Structure
-- do no provide particles in the sentence structure
-- do not provide tenses or conjugations in the sentence structure
 - do not provide particles in the sentence structure
 - do not provide tenses or conjugations in the sentence structure
 - remember to consider beginner level sentence structures
