@@ -4,9 +4,10 @@
 
 https://huggingface.co/meta-llama/Meta-Llama-3-70B
 
-Meta.ai is using llama 70B parameter
+Meta.ai is using llama 70B parameter, I am using the free version of Meta.ai
 
 ## Prompt guides
 
 https://www.llama.com/docs/how-to-guides/prompting/
+
 It appears llama doesnt require any special method of prompting to receive the best outcomes
