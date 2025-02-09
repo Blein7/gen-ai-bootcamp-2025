@@ -80,4 +80,4 @@ You need to help yhe student transcribe the sentence into japanese
 </example>
 
 
-Student Input: Bears are at the door, did you leave the garbage out?
+Student Input: Did you see the raven this morning? They were looking at our garden.
