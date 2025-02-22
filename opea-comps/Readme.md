@@ -38,7 +38,7 @@ Q: Does bridge mode mean we can only access Ollama API with another model in the
 
 A: No, the host machine will be able to access it
 
-Q: Which port is being mapped 8008->141414
+Q: Which port is being mapped 9000->11434
 
 A: In this case 8008 is the port that host machine will access. the other other in the guest port (the port of the service inside container)
 
