@@ -6,25 +6,22 @@ def load(app):
     @app.route('/api/study-activities', methods=['GET'])
     @cross_origin()
     def get_study_activities():
-        try:
-            cursor = app.db.cursor()
-            cursor.execute('SELECT id, name, url, preview_url FROM study_activities')
-            activities = cursor.fetchall()
-            
-            return jsonify([{
-                'id': activity['id'],
-                'title': activity['name'],
-                'launch_url': activity['url'],
-                'preview_url': activity['preview_url']
-            } for activity in activities])
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        cursor = app.db.cursor()
+        cursor.execute('SELECT id, name, url, preview_url FROM study_activities')
+        activities = cursor.fetchall()
+        
+        return jsonify([{
+            'id': activity['id'],
+            'title': activity['name'],
+            'launch_url': activity['url'],
+            'preview_url': activity['preview_url']
+        } for activity in activities])
 
     @app.route('/api/study-activities/<int:id>', methods=['GET'])
     @cross_origin()
     def get_study_activity(id):
         cursor = app.db.cursor()
-        cursor.execute('SELECT id, name FROM study_activities WHERE id = ?', (id,))
+        cursor.execute('SELECT id, name, url, preview_url FROM study_activities WHERE id = ?', (id,))
         activity = cursor.fetchone()
         
         if not activity:
@@ -33,8 +30,8 @@ def load(app):
         return jsonify({
             'id': activity['id'],
             'title': activity['name'],
-            'launch_url': f"http://localhost:8080/activity/{activity['id']}",
-            'preview_url': f"http://localhost:8080/preview/{activity['id']}"
+            'launch_url': activity['url'],
+            'preview_url': activity['preview_url']
         })
 
     @app.route('/api/study-activities/<int:id>/sessions', methods=['GET'])
@@ -105,7 +102,7 @@ def load(app):
         cursor = app.db.cursor()
         
         # Get activity details
-        cursor.execute('SELECT id, name FROM study_activities WHERE id = ?', (id,))
+        cursor.execute('SELECT id, name, url, preview_url FROM study_activities WHERE id = ?', (id,))
         activity = cursor.fetchone()
         
         if not activity:
@@ -119,40 +116,11 @@ def load(app):
             'activity': {
                 'id': activity['id'],
                 'title': activity['name'],
-                'launch_url': f"http://localhost:8080/activity/{activity['id']}",
-                'preview_url': f"http://localhost:8080/preview/{activity['id']}"
+                'launch_url': activity['url'],
+                'preview_url': activity['preview_url']
             },
             'groups': [{
                 'id': group['id'],
                 'name': group['name']
             } for group in groups]
         })
-
-    @app.route('/api/study-activities/init', methods=['POST'])
-    @cross_origin()
-    def init_study_activities():
-        try:
-            cursor = app.db.cursor()
-            
-            # Add sample activities
-            cursor.execute('''
-                INSERT INTO study_activities (name, created_at)
-                VALUES 
-                ('Flashcards', datetime('now')),
-                ('Quiz Game', datetime('now')),
-                ('Word Practice', datetime('now'))
-            ''')
-            
-            # Add sample groups
-            cursor.execute('''
-                INSERT INTO groups (name, created_at)
-                VALUES 
-                ('Beginner Words', datetime('now')),
-                ('Common Verbs', datetime('now')),
-                ('Basic Phrases', datetime('now'))
-            ''')
-            
-            app.db.commit()
-            return jsonify({"message": "Study activities and groups initialized"}), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
