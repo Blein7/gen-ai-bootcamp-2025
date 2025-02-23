@@ -32,10 +32,13 @@ class Db:
       return file.read()
 
   # Function to load the words from a JSON file
-  def load_json(self, filepath):
-    with open(filepath, 'r') as file:
+  #def load_json(self, filepath):
+    #with open(filepath, 'r') as file:
       return json.load(file)
-
+  def load_json(self, data_json_path):
+      with open(data_json_path, 'r', encoding='utf-8') as file:
+         return json.load(file) 
+      
   def setup_tables(self,cursor):
     # Create the necessary tables
     cursor.execute(self.sql('setup/create_table_words.sql'))
