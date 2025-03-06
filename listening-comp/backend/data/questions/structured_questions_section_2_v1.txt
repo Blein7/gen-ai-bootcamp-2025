@@ -1,0 +1,37 @@
+Section Description: Here is the extracted section of the JLPT listening test questions from the provided transcript:
+
+**section_description**:
+問題2では始めに質問を聞いて、それから話を聞いて問題用紙の1から4の中から1番いいものを1つ選んでください。
+
+**questions**:
+
+- introduction: 例学校で男の学生と女の先生が話してい
+conversation: 男の学生はいつ先生と話しますか
+question: 男の学生はいつ先生と話しますか
+Questions:
+Question 1:
+Introduction: -  例デパートで男の人とお店の人が話してい
+Conversation: 男の人のカはどれですか
+Question: 男の人のカはどれですか
+
+Question 2:
+Introduction: -  例女の人と男の人が話してい
+Conversation: 2人は明日何をしますか
+Question: 2人は明日何をしますか
+
+Question 3:
+Introduction: -  例学校で先生が学生に話してい
+Conversation: 学生は明日何を持っていきますか
+Question: 学生は明日何を持っていきますか
+
+Question 4:
+Introduction: -  例女の人と男の人が話してい
+Conversation: 女の人はお父さんの誕生日プレゼントに何を買いますか
+Question: 女の人はお父さんの誕生日プレゼントに何を買いますか
+
+Question 5:
+Introduction: -  例男の人と女の人が話してい
+Conversation: 男の人の妹はどんな仕事をしていますか
+Question: 男の人の妹はどんな仕事をしていますか
+
+

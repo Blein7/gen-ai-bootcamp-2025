@@ -1,0 +1,35 @@
+Section Description: Here is the extracted section of the JLPT listening test questions in the requested format:
+
+```plaintext
+section_description: 問題3では絵を見ながら質問を聞いてください矢印の人は何と言いますか1から3の中から1番いいものを1つ選んでください
+questions:
+- introduction: 例朝学校で先生に会いました何と言いますか
+  conversation: 1おはようございません2おやすみなさい3お疲れ様でした
+  question: 1番いいものは1番です
+Questions:
+Question 1:
+Introduction: -  例朝学校で先生に会いました何と言いますか
+Conversation: 1どうぞ入ってください2どうぞ来てください3どうぞ行ってください
+Question: 何と言いますか
+
+Question 2:
+Introduction: -  例朝学校に行き何と言いますか
+Conversation: 1さようなら2行ってきましょう3お疲れ様です
+Question: 何と言いますか
+
+Question 3:
+Introduction: -  例朝学校に行き何と言いますか
+Conversation: 1どうしましょうか2どうしましたか3どうしますか
+Question: 何と言いますか
+
+Question 4:
+Introduction: -  例朝学校に行き何と言いますか
+Conversation: 1これ見ないでください2これ見せてください3これ見てください
+Question: 何と言いますか
+
+Question 5:
+Introduction: -  例朝学校に行き何と言いますか
+Conversation: 1ただいま2いらっしゃい3お帰りなさい
+Question: 何と言いますか
+
+
