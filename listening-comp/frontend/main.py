@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.chat import BedrockChat
 from backend.get_transcript import YouTubeTranscriptDownloader
-
+from backend.question_generator import QuestionGenerator
 
 # Page config
 st.set_page_config(
@@ -24,6 +24,12 @@ if 'transcript' not in st.session_state:
     st.session_state.transcript = None
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+if 'question_generator' not in st.session_state:
+    st.session_state.question_generator = QuestionGenerator()
+if 'current_question' not in st.session_state:
+    st.session_state.current_question = None
+if 'correct_answer' not in st.session_state:
+    st.session_state.correct_answer = None
 
 def render_header():
     """Render the header section"""
@@ -163,8 +169,6 @@ def process_message(message: str):
         if response:
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
-
-
 
 def count_characters(text):
     """Count Japanese and total characters in text"""
@@ -312,6 +316,26 @@ def render_interactive_stage():
         st.subheader("Feedback")
         # Placeholder for feedback
         st.info("Feedback will appear here")
+    
+    # Generate a new question based on the selected practice type
+    if st.button("Generate New Question"):
+        query = "Generate a new question for practice"
+        section = 1  # Example section, you can change this based on user input
+        new_question = st.session_state.question_generator.generate_similar_question(query, section)
+        st.session_state.current_question = new_question
+    
+    if st.session_state.current_question:
+        st.subheader("Generated Question")
+        st.write(st.session_state.current_question)
+        
+        # Placeholder for correct answer (for demonstration purposes)
+        st.session_state.correct_answer = "Option 1"
+        
+        # Get user answer and provide feedback
+        if selected:
+            feedback = st.session_state.question_generator.get_feedback(selected, st.session_state.correct_answer, st.session_state.current_question['question'])
+            st.subheader("Feedback")
+            st.write(feedback)
 
 def main():
     render_header()
