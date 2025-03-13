@@ -11,6 +11,7 @@ if project_root not in sys.path:
 from backend.question_generator import QuestionGenerator
 from backend.chat import BedrockChat
 from backend.get_transcript import YouTubeTranscriptDownloader
+from backend.audio_generator import AudioGenerator
 
 from typing import Dict
 import json
@@ -37,6 +38,10 @@ if 'correct_answer' not in st.session_state:
     st.session_state.correct_answer = None
 if 'stage' not in st.session_state:
     st.session_state.stage = None
+if 'audio_generator' not in st.session_state:
+    st.session_state.audio_generator = AudioGenerator()
+if 'current_audio_file' not in st.session_state:
+    st.session_state.current_audio_file = None
 
 def render_header():
     """Render the header section"""
@@ -299,6 +304,8 @@ def render_rag_stage():
 
 def render_interactive_stage():
     """Render the interactive stage of the app"""
+    st.title("JLPT Listening Practice")
+    
     # Initialize session state
     if 'question_generator' not in st.session_state:
         st.session_state.question_generator = QuestionGenerator()
@@ -308,6 +315,8 @@ def render_interactive_stage():
         st.session_state.feedback = None
     if 'selected_answer' not in st.session_state:
         st.session_state.selected_answer = None
+    if 'show_audio' not in st.session_state:
+        st.session_state.show_audio = False
     
     # Add history to sidebar
     with st.sidebar:
@@ -386,9 +395,6 @@ def render_interactive_stage():
                         st.session_state.topic = entry['topic']
                         st.rerun()
     
-    # Main content area
-    st.title("JLPT Listening Practice")
-    
     # Section selection
     st.markdown("### Section Selection")
     section_num = st.radio(
@@ -419,14 +425,17 @@ def render_interactive_stage():
                 topic=selected_topic
             )
             if new_question:
+                # Remove any existing audio file reference
+                new_question.pop('audio_file', None)
                 st.session_state.current_question = new_question
                 st.session_state.feedback = None
+                st.session_state.show_audio = False
                 st.rerun()
             else:
                 st.error("Failed to generate a new question. Please try again.")
         except Exception as e:
             st.error(f"Error generating question: {str(e)}")
-    
+
     # Display current question
     if st.session_state.current_question:
         question = st.session_state.current_question
@@ -439,8 +448,74 @@ def render_interactive_stage():
             font-size: 16px;
             line-height: 1.6;
         }
+        .audio-controls {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f0f7ff;
+            border: 1px solid #cce5ff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .audio-button {
+            margin: 10px 0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .audio-button:hover {
+            background-color: #0052a3;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         </style>
         """, unsafe_allow_html=True)
+        
+        # Audio playback section
+        with st.container():
+            st.markdown('<div class="audio-controls">', unsafe_allow_html=True)
+            st.markdown("### 🎧 Question Audio")
+            
+            if not st.session_state.show_audio:
+                # Only show the generate button if audio hasn't been generated
+                if st.button("🔊 Generate Audio", key="generate_audio", use_container_width=True):
+                    with st.spinner("Generating audio..."):
+                        audio_file = st.session_state.audio_generator.generate_audio(question)
+                        if audio_file and os.path.exists(audio_file):
+                            # Create a new copy of the question to avoid modifying the original
+                            updated_question = question.copy()
+                            updated_question['audio_file'] = audio_file
+                            st.session_state.current_question = updated_question
+                            st.session_state.show_audio = True
+                            st.rerun()
+                        else:
+                            st.error("Failed to generate audio. Please try again.")
+            else:
+                # Show the audio player and a regenerate button
+                if 'audio_file' in question and os.path.exists(question['audio_file']):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.audio(question['audio_file'])
+                    with col2:
+                        if st.button("🔄 Regenerate", key="regenerate_audio", use_container_width=True):
+                            with st.spinner("Regenerating audio..."):
+                                audio_file = st.session_state.audio_generator.generate_audio(question)
+                                if audio_file and os.path.exists(audio_file):
+                                    updated_question = question.copy()
+                                    updated_question['audio_file'] = audio_file
+                                    st.session_state.current_question = updated_question
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to regenerate audio. Please try again.")
+                else:
+                    st.error("Audio file not found. Please try regenerating the audio.")
+                    if st.button("🔄 Try Again", key="retry_audio", use_container_width=True):
+                        st.session_state.show_audio = False
+                        st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
         
         # Display based on section type
         if section_num == 2:

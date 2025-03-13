@@ -2,3 +2,4 @@
 .vector/**/*
 *.bin
 *.sqlite3
+*.mp3
