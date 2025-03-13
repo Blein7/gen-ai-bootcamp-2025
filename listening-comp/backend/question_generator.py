@@ -1,280 +1,232 @@
 import boto3
 import json
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional
+from backend.vector_store import JLPTQuestionVectorStore
+from backend.question_history import QuestionHistory
 
-# Import your existing VectorStore class
-from .vector_store import JLPTQuestionVectorStore
+# Model ID for question generation
+MODEL_ID = "amazon.nova-micro-v1:0"
 
 class QuestionGenerator:
     def __init__(self):
-        """
-        Initialize Bedrock client and vector store
-        """
-        self.bedrock_client = boto3.client('bedrock-runtime', region_name="us-east-1")
+        """Initialize vector store and Bedrock client for RAG-based question generation"""
         self.vector_store = JLPTQuestionVectorStore()
-        self.model_id = "amazon.nova-micro-v1:0"
-
-    def _invoke_bedrock(self, prompt: str) -> Optional[str]:
-        """
-        Invoke Bedrock with the given prompt
-        """
+        self.bedrock_client = boto3.client('bedrock-runtime', region_name="us-east-1")
+        self.history = QuestionHistory()
+    
+    def generate_question(self, section: int = None, topic: str = None) -> Optional[Dict]:
+        """Generate a new question using RAG workflow"""
         try:
+            # 1. Find similar questions using semantic search with topic context
+            query = f"Generate a new JLPT listening question about {topic}" if topic else "Generate a new JLPT listening question"
+            similar_questions = self.vector_store.query_similar_questions(
+                query_text=query,
+                section=section,
+                n_results=2
+            )
+            
+            if not similar_questions:
+                print("No similar questions found in vector store")
+                return None
+            
+            # 2. Use retrieved questions as context for generation
+            question_context = similar_questions[0]['metadata']  # Already parsed by vector store
+            
+            # 3. Generate new question using converse API with topic guidance
             messages = [{
                 "role": "user",
                 "content": [{
-                    "text": prompt
+                    "text": self._create_question_prompt(question_context, topic)
                 }]
             }]
             
             response = self.bedrock_client.converse(
-                modelId=self.model_id,
+                modelId=MODEL_ID,
                 messages=messages,
-                inferenceConfig={"temperature": 0.7}
+                inferenceConfig={
+                    "temperature": 0.7,
+                    "topP": 0.9,
+                    "maxTokens": 500
+                }
+            )
+            
+            # 4. Parse response into question format
+            new_question = self._parse_question_response(response['output']['message']['content'][0]['text'])
+            
+            # 5. Add topic to the question metadata
+            if new_question:
+                new_question['topic'] = topic
+            
+            # 6. Store the new question in vector store and history
+            if new_question and section:
+                self.vector_store.store_questions([new_question], section)
+                # Store in history with section and topic
+                self.history.add_question(new_question, section, topic or "General")
+            
+            return new_question
+            
+        except Exception as e:
+            print(f"Error generating question: {str(e)}")
+            return None
+    
+    def provide_feedback(self, question: Dict, user_answer: str) -> str:
+        """Provide contextual feedback using RAG workflow"""
+        try:
+            # 1. Find similar questions for context
+            similar_questions = self.vector_store.query_similar_questions(
+                query_text=f"{question.get('introduction', '')} {question.get('conversation', '')}",
+                section=None,
+                n_results=2
+            )
+            
+            # 2. Generate feedback using converse API
+            messages = [{
+                "role": "user",
+                "content": [{
+                    "text": self._create_feedback_prompt(question, [q['metadata'] for q in similar_questions], user_answer)
+                }]
+            }]
+            
+            response = self.bedrock_client.converse(
+                modelId=MODEL_ID,
+                messages=messages,
+                inferenceConfig={
+                    "temperature": 0.7,
+                    "topP": 0.9,
+                    "maxTokens": 500
+                }
             )
             
             return response['output']['message']['content'][0]['text']
+            
         except Exception as e:
-            print(f"Error invoking Bedrock: {str(e)}")
+            print(f"Error providing feedback: {str(e)}")
+            return "Unable to generate feedback at this time."
+    
+    def get_question_history(self, section: Optional[int] = None, topic: Optional[str] = None) -> List[Dict]:
+        """Get questions from history with optional filters"""
+        return self.history.get_questions(section, topic)
+    
+    def get_question_by_id(self, question_id: int) -> Optional[Dict]:
+        """Get a specific question by ID"""
+        return self.history.get_question_by_id(question_id)
+    
+    def _create_question_prompt(self, context: Dict, topic: str = None) -> str:
+        """Create prompt for generating a new question"""
+        # Topic-specific guidance for options
+        topic_guidance = {
+            "Daily Conversation": "Focus on different responses, reactions, or solutions to daily situations",
+            "Shopping": "Include options about product choices, prices, preferences, or shopping decisions",
+            "Restaurant": "Vary between menu items, dining preferences, reservations, or special requests",
+            "School Life": "Include options about study plans, club activities, assignments, or school events",
+            "Work Situation": "Focus on workplace decisions, meeting schedules, project details, or business interactions",
+            "Public Announcement": "Include options about event details, schedule changes, locations, or important notices",
+            "Train Station": "Vary between platform numbers, train lines, destinations, or service announcements",
+            "Hospital": "Include options about appointments, departments, medical procedures, or visiting hours",
+            "Office": "Focus on meeting rooms, document handling, office procedures, or work schedules",
+            "Event Information": "Include options about event times, locations, requirements, or program details"
+        }
+        
+        option_guidance = topic_guidance.get(topic, "Ensure options are diverse and contextually relevant")
+        
+        return f"""
+You are a JLPT listening test question creator. Generate a new question following these requirements:
+
+Topic: {topic if topic else 'General JLPT listening practice'}
+
+Original Question for Reference:
+Introduction: {context.get('introduction', '')}
+Conversation: {context.get('conversation', '')}
+Question: {context.get('question', '')}
+Options: {', '.join(context.get('options', []))}
+
+Requirements for the new question:
+1. Introduction (状況説明) must be in Japanese, describing a {topic} situation naturally
+2. Conversation must be in Japanese, using appropriate keigo and natural dialogue
+3. Question (質問) must be in Japanese
+4. Options must be in Japanese, with 4 plausible but distinct choices
+5. Correct answer should be indicated as a number (0-3, where 0 is the first option)
+
+Important:
+- {option_guidance}
+- Avoid making all options about time durations
+- Each option should present a different scenario or choice
+- Options should be realistic and contextually appropriate
+
+Format the response exactly as follows:
+{{
+    "introduction": "(Japanese introduction text)",
+    "conversation": "(Japanese dialogue)",
+    "question": "(Japanese question text)",
+    "options": ["(Japanese option 1)", "(Japanese option 2)", "(Japanese option 3)", "(Japanese option 4)"],
+    "correct_answer": (0-3)
+}}
+
+Note: The conversation should maintain JLPT level appropriateness and test listening comprehension skills.
+"""
+    
+    def _parse_question_response(self, response_text: str) -> Optional[Dict]:
+        """Parse the response from the model into a question format"""
+        try:
+            # Find the JSON block in the response
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}') + 1
+            if start_idx == -1 or end_idx == 0:
+                print("No JSON found in response")
+                return None
+            
+            json_str = response_text[start_idx:end_idx]
+            question = json.loads(json_str)
+            
+            # Validate required fields
+            required_fields = ['introduction', 'conversation', 'question', 'options', 'correct_answer']
+            if not all(field in question for field in required_fields):
+                print("Missing required fields in question")
+                return None
+            
+            # Ensure correct_answer is an integer
+            question['correct_answer'] = int(question['correct_answer'])
+            
+            return question
+        except Exception as e:
+            print(f"Error parsing question response: {str(e)}")
             return None
-
-    def generate_similar_question(self, query_text: str, section: int) -> Dict:
-        """
-        Generate a new question similar to existing ones using RAG
-        
-        Args:
-            query_text (str): Query text to find similar questions
-            section (int): JLPT section number (1, 2, or 3)
-            
-        Returns:
-            Dict: New generated question with introduction, conversation, and question
-        """
-        # Get similar questions for context
-        try:
-            similar_questions = self.vector_store.query_similar_questions(query_text=query_text, section=section)
-        except Exception as e:
-            # If we still have issues (e.g., empty collection), return a default question
-            print(f"Error querying similar questions: {e}")
-            return self._generate_default_question(section)
-        
-        # If no similar questions found, create a default question
-        if not similar_questions:
-            return self._generate_default_question(section)
-        
-        # Extract the most similar questions for context
-        context_questions = []
-        for q in similar_questions[:3]:  # Use top 3 similar questions
-            if 'metadata' in q and isinstance(q['metadata'], dict):
-                context_questions.append(q['metadata'])
-        
-        # Format prompt for Nova
-        prompt = self._format_generation_prompt(context_questions, query_text, section)
-        
-        # Generate new question using Bedrock
-        generated_text = self._invoke_bedrock(prompt)
-        if generated_text:
-            return self._parse_generated_question(generated_text)
-        else:
-            return self._generate_default_question(section)
     
-    def _format_generation_prompt(self, context_questions: List[Dict], query_text: str, section: int) -> str:
-        """
-        Format the prompt for generating a new question
+    def _create_feedback_prompt(self, question: Dict, similar_questions: List[Dict], user_answer: str) -> str:
+        """Create prompt for generating feedback"""
+        # Get the correct and selected options
+        correct_option = question.get('options', [])[question.get('correct_answer', 0)]
+        user_option = question.get('options', [])[int(user_answer)-1] if question.get('options') else user_answer
         
-        Args:
-            context_questions (List[Dict]): List of similar questions for context
-            query_text (str): The user's query text
-            section (int): JLPT section number
-            
-        Returns:
-            str: Formatted prompt for Bedrock
-        """
-        # Format context questions
-        context_str = ""
-        for i, q in enumerate(context_questions):
-            context_str += f"Example {i+1}:\n"
-            context_str += f"Introduction: {q.get('introduction', '')}\n"
-            context_str += f"Conversation: {q.get('conversation', '')}\n"
-            context_str += f"Question: {q.get('question', '')}\n\n"
-        
-        # Create full prompt
-        prompt = f"""
-You are a Japanese language tutor specializing in JLPT listening test questions.
+        return f"""
+You are a JLPT listening test evaluator. Analyze this response and provide helpful feedback:
 
-Create a new JLPT Section {section} listening question that's similar to the examples but not identical.
-Use the user's query theme: "{query_text}" to guide the creation.
+Question Details:
+- Introduction: {question.get('introduction', '')}
+- Conversation: {question.get('conversation', '')}
+- Question: {question.get('question', '')}
+- Student's Answer: {user_option}
+- Correct Answer: {correct_option}
 
-Here are some example questions for reference:
-{context_str}
+Similar Questions for Context:
+{self._format_similar_questions(similar_questions)}
 
-Please create a new question with the following structure:
-1. Introduction (in Japanese): A brief introduction to the listening scenario
-2. Conversation (in Japanese): The conversation or statement to be heard
-3. Question (in Japanese): The question asked about the conversation
+Provide feedback in this format:
+1. Start with whether the answer is correct or incorrect
+2. Explain the key points from the conversation that led to the correct answer
+3. Highlight any important Japanese expressions or grammar patterns used
+4. Give specific tips for improving listening comprehension
+5. End with an encouraging note
 
-Format your response in JSON format with three keys: introduction, conversation, and question.
+Keep the feedback clear and concise in English to help the student understand and improve.
 """
-        return prompt
-    
-    def _parse_generated_question(self, generated_text: str) -> Dict:
-        """
-        Parse the generated text into a structured question
-        
-        Args:
-            generated_text (str): Generated text from Bedrock
-            
-        Returns:
-            Dict: Structured question
-        """
-        # Try to extract JSON if present
-        try:
-            # Look for JSON-like structure in the text
-            start_idx = generated_text.find('{')
-            end_idx = generated_text.rfind('}')
-            
-            if start_idx >= 0 and end_idx > start_idx:
-                json_str = generated_text[start_idx:end_idx+1]
-                question_dict = json.loads(json_str)
-                
-                # Ensure all required fields are present
-                if all(k in question_dict for k in ['introduction', 'conversation', 'question']):
-                    return question_dict
-        except:
-            pass
-        
-        # Fallback: Try to parse based on headers
-        try:
-            lines = generated_text.split('\n')
-            introduction = ""
-            conversation = ""
-            question = ""
-            current_section = None
-            
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                    
-                if "introduction:" in line.lower():
-                    current_section = "introduction"
-                    introduction = line.split(":", 1)[1].strip()
-                elif "conversation:" in line.lower():
-                    current_section = "conversation"
-                    conversation = line.split(":", 1)[1].strip()
-                elif "question:" in line.lower():
-                    current_section = "question"
-                    question = line.split(":", 1)[1].strip()
-                elif current_section:
-                    # Append to current section
-                    if current_section == "introduction":
-                        introduction += " " + line
-                    elif current_section == "conversation":
-                        conversation += " " + line
-                    elif current_section == "question":
-                        question += " " + line
-            
-            return {
-                "introduction": introduction.strip(),
-                "conversation": conversation.strip(),
-                "question": question.strip()
-            }
-        except:
-            # If all parsing fails, return a simple structure
-            return {
-                "introduction": "自動生成された問題",
-                "conversation": generated_text[:100],
-                "question": "何について話していますか"
-            }
-    
-    def _generate_default_question(self, section: int) -> Dict:
-        """
-        Generate a default question when RAG fails
-        
-        Args:
-            section (int): JLPT section number
-            
-        Returns:
-            Dict: Default question
-        """
-        if section == 1:
-            return {
-                "introduction": "朝学校で先生に会いました。何と言いますか。",
-                "conversation": "おはようございます、こんにちは、さようなら",
-                "question": "何と言いますか"
-            }
-        elif section == 2:
-            return {
-                "introduction": "友達と映画を見た後の会話です。",
-                "conversation": "A: 映画はどうでしたか？\nB: とても面白かったです。特に最後のシーンが印象的でした。",
-                "question": "Bさんはどう思いましたか？"
-            }
-        else:
-            return {
-                "introduction": "大学のレポートについての会話です。",
-                "conversation": "A: レポートの締め切りはいつですか？\nB: 今週の金曜日です。でも、提出が遅れる場合は先生に相談してください。",
-                "question": "レポートの締め切りはいつですか？"
-            }
-    
-    def get_feedback(self, user_answer: str, correct_answer: str, question_text: str) -> Tuple[bool, str]:
-        """
-        Evaluate the user's answer and provide feedback
-        
-        Args:
-            user_answer (str): The user's answer
-            correct_answer (str): The correct answer
-            question_text (str): The original question text
-            
-        Returns:
-            Tuple[bool, str]: (is_correct, feedback_explanation)
-        """
-        prompt = f"""
-You are a Japanese language tutor evaluating a student's answer to a JLPT listening question.
 
-Question: {question_text}
-Correct answer: {correct_answer}
-Student's answer: {user_answer}
-
-First determine if the student's answer is correct. Consider slight variations or synonyms as correct.
-Then provide helpful feedback explaining why the answer is correct or incorrect in a supportive way.
-If incorrect, explain the correct answer and what the student may have misunderstood.
-
-Format your response exactly as follows:
-CORRECT: Yes or No
-EXPLANATION: Your detailed feedback here
-"""
-        
-        try:
-            response = self.bedrock_client.converse(
-                modelId=self.model_id,
-                messages=[{
-                    "role": "user",
-                    "content": [{
-                        "text": prompt
-                    }]
-                }],
-                inferenceConfig={"temperature": 0.2}
-            )
-            
-            # Parse response
-            feedback_text = response['output']['message']['content'][0]['text']
-            
-            # Extract correctness and explanation
-            is_correct = False
-            explanation = ""
-            
-            for line in feedback_text.split('\n'):
-                if line.startswith("CORRECT:"):
-                    is_correct = "yes" in line.lower()
-                elif line.startswith("EXPLANATION:"):
-                    explanation = line[len("EXPLANATION:"):].strip()
-                    # Get the rest of the explanation if it continues
-                    rest_idx = feedback_text.find("EXPLANATION:") + len("EXPLANATION:")
-                    explanation = feedback_text[rest_idx:].strip()
-            
-            return is_correct, explanation
-        
-        except Exception as e:
-            print(f"Error generating feedback: {e}")
-            # Fallback simple evaluation
-            is_correct = user_answer.lower() == correct_answer.lower()
-            explanation = "正解です！" if is_correct else f"残念ながら不正解です。正解は「{correct_answer}」です。"
-            return is_correct, explanation
+    def _format_similar_questions(self, questions: List[Dict]) -> str:
+        """Format similar questions for context"""
+        result = []
+        for i, q in enumerate(questions, 1):
+            result.append(f"Similar Question {i}:")
+            result.append(f"Introduction: {q.get('introduction', '')}")
+            result.append(f"Conversation: {q.get('conversation', '')}")
+            result.append(f"Question: {q.get('question', '')}\n")
+        return "\n".join(result)
