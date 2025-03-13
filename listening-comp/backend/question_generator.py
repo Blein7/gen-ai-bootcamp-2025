@@ -1,6 +1,7 @@
 import boto3
 import json
 from typing import Dict, List, Optional
+from datetime import datetime
 from backend.vector_store import JLPTQuestionVectorStore
 from backend.question_history import QuestionHistory
 
@@ -53,9 +54,10 @@ class QuestionGenerator:
             # 4. Parse response into question format
             new_question = self._parse_question_response(response['output']['message']['content'][0]['text'])
             
-            # 5. Add topic to the question metadata
+            # 5. Add topic and timestamp to the question metadata
             if new_question:
                 new_question['topic'] = topic
+                new_question['timestamp'] = datetime.now().isoformat()
             
             # 6. Store the new question in vector store and history
             if new_question and section:
