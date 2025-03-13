@@ -5,13 +5,14 @@ import os
 from typing import List, Dict
 
 class JLPTQuestionVectorStore:
-    def __init__(self, storage_path='./vector_storage'):
+    def __init__(self):
         """
         Initialize the vector store for JLPT listening test questions
-        
-        Args:
-            storage_path (str): Path to store ChromaDB collections
         """
+        # Always use backend/vector_storage
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        storage_path = os.path.join(current_dir, 'vector_storage')
+        
         # Initialize Bedrock client for embeddings
         self.bedrock = boto3.client(
             service_name='bedrock-runtime',
@@ -131,11 +132,17 @@ class JLPTQuestionVectorStore:
             
             # Process results
             for i in range(len(results['ids'][0])):
+                # Get the full question from metadata without double-encoding
+                metadata = results['metadatas'][0][i]
+                question = metadata['full_question']
+                if isinstance(question, str):
+                    question = json.loads(question)
+                
                 all_results.append({
                     'id': results['ids'][0][i],
-                    'metadata': json.loads(results['metadatas'][0][i]['full_question']),
+                    'metadata': question,  # Use the parsed question directly
                     'distance': results['distances'][0][i],
-                    'section': results['metadatas'][0][i]['section']
+                    'section': metadata['section']
                 })
         
         # Sort results by distance and return top n_results
