@@ -50,6 +50,17 @@ export interface StudySession {
   start_time: string;
   end_time: string;
   review_items_count: number;
+  correct_count: number;
+  wrong_count: number;
+}
+
+export interface StudySessionResponse {
+  session: StudySession;
+  words: Word[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
 }
 
 export interface WordReview {
@@ -76,6 +87,30 @@ export interface StudyStats {
   active_groups: number;
   current_streak: number;
 }
+
+// Word API
+export const fetchWords = async (
+  page: number = 1,
+  sortBy: string = 'kanji',
+  order: 'asc' | 'desc' = 'asc'
+): Promise<WordsResponse> => {
+  const response = await fetch(
+    `${API_BASE_URL}/words?page=${page}&sort_by=${sortBy}&order=${order}`
+  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch words');
+  }
+  return response.json();
+};
+
+export const fetchWordDetails = async (wordId: number): Promise<Word> => {
+  const response = await fetch(`${API_BASE_URL}/words/${wordId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch word details');
+  }
+  const data: WordResponse = await response.json();
+  return data.word;
+};
 
 // Group API
 export const fetchGroups = async (
@@ -110,7 +145,9 @@ export const fetchGroupDetails = async (
   sortBy: string = 'kanji',
   order: 'asc' | 'desc' = 'asc'
 ): Promise<GroupDetails> => {
-  const response = await fetch(`${API_BASE_URL}/groups/${groupId}`);
+  const response = await fetch(
+    `${API_BASE_URL}/groups/${groupId}?page=${page}&sort_by=${sortBy}&order=${order}`
+  );
   if (!response.ok) {
     throw new Error('Failed to fetch group details');
   }
@@ -132,56 +169,31 @@ export const fetchGroupWords = async (
   return response.json();
 };
 
-// Word API
-export const fetchWords = async (
-  page: number = 1,
-  sortBy: string = 'kanji',
-  order: 'asc' | 'desc' = 'asc'
-): Promise<WordsResponse> => {
-  const response = await fetch(
-    `${API_BASE_URL}/words?page=${page}&sort_by=${sortBy}&order=${order}`
-  );
-  if (!response.ok) {
-    throw new Error('Failed to fetch words');
-  }
-  return response.json();
-};
-
-export const fetchWordDetails = async (wordId: number): Promise<Word> => {
-  const response = await fetch(`${API_BASE_URL}/words/${wordId}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch word details');
-  }
-  const data: WordResponse = await response.json();
-  return data.word;
-};
-
 // Study Session API
 export const createStudySession = async (
   groupId: number,
   studyActivityId: number
-): Promise<{ session_id: number }> => {
-  const response = await fetch(`${API_BASE_URL}/study_sessions`, {
+): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/study-sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       group_id: groupId,
-      study_activity_id: studyActivityId,
+      activity_id: studyActivityId,
     }),
   });
   if (!response.ok) {
     throw new Error('Failed to create study session');
   }
-  return response.json();
 };
 
 export const submitStudySessionReview = async (
   sessionId: number,
   reviews: WordReview[]
 ): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/study_sessions/${sessionId}/review`, {
+  const response = await fetch(`${API_BASE_URL}/api/study-sessions/${sessionId}/review`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -201,10 +213,10 @@ export interface StudySessionsResponse {
   total_pages: number;
 }
 
-export async function fetchStudySessions(
+export const fetchStudySessions = async (
   page: number = 1,
   perPage: number = 10
-): Promise<StudySessionsResponse> {
+): Promise<StudySessionsResponse> => {
   const response = await fetch(
     `${API_BASE_URL}/api/study-sessions?page=${page}&per_page=${perPage}`
   );
@@ -212,7 +224,7 @@ export async function fetchStudySessions(
     throw new Error('Failed to fetch study sessions');
   }
   return response.json();
-}
+};
 
 export interface StudySessionsResponse {
   study_sessions: StudySession[];
@@ -220,12 +232,12 @@ export interface StudySessionsResponse {
   current_page: number;
 }
 
-export async function fetchGroupStudySessions(
+export const fetchGroupStudySessions = async (
   groupId: number,
   page: number = 1,
   sortBy: string = 'created_at',
   order: 'asc' | 'desc' = 'desc'
-): Promise<StudySessionsResponse> {
+): Promise<StudySessionsResponse> => {
   const response = await fetch(
     `${API_BASE_URL}/groups/${groupId}/study_sessions?page=${page}&sort_by=${sortBy}&order=${order}`
   );
@@ -233,7 +245,15 @@ export async function fetchGroupStudySessions(
     throw new Error('Failed to fetch group study sessions');
   }
   return response.json();
-}
+};
+
+export const fetchStudySession = async (id: number): Promise<StudySessionResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/study-sessions/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch study session');
+  }
+  return response.json();
+};
 
 // Dashboard API
 export const fetchRecentStudySession = async (): Promise<RecentSession | null> => {
@@ -242,8 +262,7 @@ export const fetchRecentStudySession = async (): Promise<RecentSession | null> =
     throw new Error('Failed to fetch recent session');
   }
   const data = await response.json();
-  console.log('Raw response from recent session:', data);
-  return data;
+  return data.session;
 };
 
 export const fetchStudyStats = async (): Promise<StudyStats> => {

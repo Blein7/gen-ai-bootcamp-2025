@@ -18,3 +18,17 @@ Despite this issue, I was able to recreate the necessary backend API routes, tes
 
 ## Test code
 The tests codes are located in the tests folder
+
+
+## Seed code
+
+  {
+    "name": "Flashcards",
+    "url": "http://localhost:8080/flashcards",
+    "preview_url": "http://localhost:8080/flashcards/preview"
+  },
+  {
+    "name": "Quiz",
+    "url": "http://localhost:8080/quiz",
+    "preview_url": "http://localhost:8080/quiz/preview"
+  },

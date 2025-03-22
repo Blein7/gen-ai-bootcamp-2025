@@ -1,20 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useNavigation } from '@/context/NavigationContext'
-import WordsTable from '@/components/WordsTable'
 import Pagination from '@/components/Pagination'
-import type { Word, WordSortKey } from '@/services/api'
-
-interface StudySession {
-  id: number
-  group_id: number
-  group_name: string
-  activity_id: number
-  activity_name: string
-  start_time: string
-  end_time: string
-  review_items_count: number
-}
+import type { Word, StudySession } from '@/services/api'
 
 interface SessionResponse {
   session: StudySession
@@ -31,8 +18,6 @@ export default function StudySessionShow() {
   const [words, setWords] = useState<Word[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [sortKey, setSortKey] = useState<WordSortKey>('kanji')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,10 +35,12 @@ export default function StudySessionShow() {
           throw new Error('Failed to fetch session data')
         }
         const data: SessionResponse = await response.json()
+        console.log('Fetched data:', data)
         setSession(data.session)
         setWords(data.words)
         setTotalPages(data.total_pages)
       } catch (err) {
+        console.error('Error fetching data:', err)
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
         setLoading(false)
@@ -62,15 +49,6 @@ export default function StudySessionShow() {
 
     fetchData()
   }, [id, currentPage])
-
-  const handleSort = (key: WordSortKey) => {
-    if (key === sortKey) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDirection('asc')
-    }
-  }
 
   if (loading) {
     return <div className="text-center py-4">Loading...</div>
@@ -118,13 +96,55 @@ export default function StudySessionShow() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Words Reviewed</h2>
-        <WordsTable
-          words={words}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-        />
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Words Reviewed</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Kanji
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Romaji
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  English
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Correct
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Wrong
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {words.map((word) => (
+                <tr key={word.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-100">
+                    {word.kanji}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-100">
+                    {word.romaji}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-100">
+                    {word.english}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                      {word.correct_count || 0} ✓
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+                      {word.wrong_count || 0} ✗
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {totalPages > 1 && (
           <div className="mt-4">
             <Pagination

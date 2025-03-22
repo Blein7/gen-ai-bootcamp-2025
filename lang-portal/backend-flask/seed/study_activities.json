@@ -1,12 +1,13 @@
 [
   {
-    "name": "Flashcards",
-    "url": "http://localhost:8080/flashcards",
-    "preview_url": "http://localhost:8080/flashcards/preview"
+    "name": "Typing Tutor", 
+    "url": "http://localhost:8080", 
+    "preview_url": "/assets/study_activities/typing-tutor.png"
   },
-  {
-    "name": "Quiz",
-    "url": "http://localhost:8080/quiz",
-    "preview_url": "http://localhost:8080/quiz/preview"
+
+  {"name": "Writing Practice",
+  "url": "http://localhost:8081",
+   "preview_url": ""
   }
+  
 ]

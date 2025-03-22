@@ -1,13 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-  purge: {
-    safelist: ['dark', 'light'], // Make sure these classes are never purged
-  },
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: ['dark', 'light'], // Make sure these classes are never purged
   theme: {
   	extend: {
   		borderRadius: {

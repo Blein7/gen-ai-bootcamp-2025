@@ -46,14 +46,22 @@ def create_app(test_config=None):
     
     # In development, add localhost to allowed origins
     if app.debug:
-        allowed_origins.extend(["http://localhost:8080", "http://127.0.0.1:8080"])
+        allowed_origins.extend([
+            "http://localhost:8080", 
+            "http://127.0.0.1:8080",
+            "http://localhost:5173",  # Default Vite dev server port
+            "http://127.0.0.1:5173",
+            "*"  # Allow all origins in development
+        ])
     
     # Configure CORS with combined origins
     CORS(app, resources={
         r"/*": {
-            "origins": allowed_origins,
+            "origins": "*" if app.debug else allowed_origins,
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "expose_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
         }
     })
 
