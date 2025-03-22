@@ -1,0 +1,18 @@
+# Core dependencies
+streamlit
+python-dotenv
+requests
+openai
+numpy
+Pillow
+opencv-python
+
+# Drawing canvas
+streamlit-drawable-canvas
+
+# OCR and ML dependencies
+torch
+torchvision
+transformers
+manga-ocr
+tokenizers
