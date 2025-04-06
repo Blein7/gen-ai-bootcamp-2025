@@ -1,0 +1,13 @@
+FROM opea/gpt-sovits:latest
+
+# Switch to root to modify system files
+USER root
+
+# Fix the circular import in LangSegment
+RUN echo 'from .LangSegment import LangSegment, getTexts, classify, getCounts, printList, setfilters, getfilters\n\n# Create aliases for backward compatibility\nsetLangfilters = setfilters\ngetLangfilters = getfilters' > /usr/local/lib/python3.10/site-packages/LangSegment/__init__.py
+
+# Fix the api.py file to use setfilters instead of setLangfilters
+RUN sed -i 's/LangSegment.setLangfilters/LangSegment.setfilters/' /home/user/GPT-SoVITS/api.py
+
+# Switch back to the default user
+USER user
