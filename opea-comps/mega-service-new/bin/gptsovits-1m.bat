@@ -1,6 +1,5 @@
 @echo off
-curl -X POST "http://127.0.0.1:9880" ^
+curl -X POST http://localhost:8000/v1/chat/completions ^
 -H "Content-Type: application/json" ^
--d "{\"refer_wav_path\":\"/audio/andrew-ref-1m.wav\",\"prompt_text\":\"Welcome to this guided meditation on finding inner peace. Take a deep breath in through your nose, feeling your chest expand. And release it slowly through your mouth. Imagine yourself standing on a quiet beach at sunrise. The waves gently lap at the shore, creating a soothing rhythm. With each wave, you feel your tension melting away. The warm sunlight touches your face, and a gentle breeze carries the salt air around you. Notice how the sand feels beneath your feet cool and soft. Take another deep breath in and out. With each breath, you're becoming more relaxed, more centered. The sound of seabirds gliding overhead adds to the peaceful atmosphere. You're completely present in this moment, free from worries and distractions. As the sun continues to rise, feel its warmth spreading through your body, bringing with it a sense of renewal and possibility. Take one final deep breath and slowly open your eyes, carrying this feeling of peace with you into your day.\",\"prompt_language\":\"en\",\"text\":\"This is latest sentence I want to convert to speech\",\"text_language\":\"en\"}" ^
---output output-1m.wav
+-d "{\"model\":\"gpt-3.5-turbo\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"temperature\":0.7}"
 pause

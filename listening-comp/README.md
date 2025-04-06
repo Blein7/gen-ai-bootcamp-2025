@@ -17,7 +17,7 @@ A progressive learning tool that demonstrates how RAG and agents can enhance lan
 **Technical Restrictions:**
 * Must use Amazon Bedrock for:
    * API (converse, guardrails, embeddings, agents) (https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
-     * Aamzon Nova Micro for text generation (https://aws.amazon.com/ai/generative-ai/nova)
+     * Amazon Nova Micro for text generation (https://aws.amazon.com/ai/generative-ai/nova)
    * Titan for embeddings
 * Must implement in Streamlit, pandas (data visualization)
 * Must use SQLite for vector storage

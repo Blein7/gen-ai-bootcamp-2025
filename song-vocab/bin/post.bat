@@ -1,0 +1,4 @@
+@echo off
+curl -X POST http://localhost:8000/api/agent ^
+-H "Content-Type: application/json" ^
+-d "{\"song_title\": \"Idol\", \"artist\": \"YOASOBI\", \"language\": \"Japanese\"}"

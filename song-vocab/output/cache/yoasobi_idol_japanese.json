@@ -1,0 +1,68 @@
+{
+  "song_id": "yoasobi_idol_japanese",
+  "language": "Japanese",
+  "lyrics": "光まばゆい舞台の上で\n君は輝いている\nアイドルの君が見てる世界を\n僕も見てみたいよ",
+  "vocabulary": [
+    {
+      "kanji": "光",
+      "romaji": "hikari",
+      "english": "light",
+      "parts": [
+        {
+          "kanji": "光",
+          "romaji": [
+            "hikari",
+            "kou"
+          ]
+        }
+      ]
+    },
+    {
+      "kanji": "舞台",
+      "romaji": "buyou-ta",
+      "english": "stage",
+      "parts": []
+    },
+    {
+      "kanji": "見てる",
+      "romaji": "mi-te-ru",
+      "english": "seeing",
+      "parts": [
+        {
+          "kanji": "見",
+          "romaji": [
+            "mi",
+            "miru"
+          ]
+        }
+      ]
+    },
+    {
+      "kanji": "輝く",
+      "romaji": "kagayaku",
+      "english": "to shine",
+      "parts": []
+    },
+    {
+      "kanji": "アイドル",
+      "romaji": "aidoru",
+      "english": "idol",
+      "parts": []
+    },
+    {
+      "kanji": "見てみたい",
+      "romaji": "mi-te-mitai",
+      "english": "want to see",
+      "parts": [
+        {
+          "kanji": "見",
+          "romaji": [
+            "mi",
+            "miru"
+          ]
+        }
+      ]
+    }
+  ],
+  "source_url": "https://genius.com/Yoasobi-idol-lyrics"
+}

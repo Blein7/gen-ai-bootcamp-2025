@@ -83,7 +83,7 @@ services:
     image: ${REGISTRY:-opea}/tts:${TAG:-latest}
     container_name: tts-gptsovits-service
     ports:
-      - ${TTS_PORT:-9088}:9088
+      - ${TTS_PORT:-9089}:9088
     ipc: host
     environment:
       TTS_ENDPOINT: http://172.26.192.1:9880
