@@ -2,14 +2,14 @@ import sqlite3
 import os
 
 def run_migrations():
-    # Connect to the database
-    db_path = os.path.join(os.path.dirname(__file__), 'word_bank.db')
+    # Connect to the database in the root directory
+    db_path = os.path.join(os.path.dirname(__file__), 'words.db')
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     
     try:
         # Get list of migration files
-        migrations_dir = os.path.join(os.path.dirname(__file__), 'sql', 'migrations')
+        migrations_dir = os.path.join(os.path.dirname(__file__), 'sql', 'setup')
         migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith('.sql')])
         
         # Run each migration

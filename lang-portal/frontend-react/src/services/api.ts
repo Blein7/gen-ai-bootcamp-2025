@@ -215,11 +215,16 @@ export interface StudySessionsResponse {
 
 export const fetchStudySessions = async (
   page: number = 1,
-  perPage: number = 10
+  perPage: number = 10,
+  activityId?: number
 ): Promise<StudySessionsResponse> => {
-  const response = await fetch(
-    `${API_BASE_URL}/api/study-sessions?page=${page}&per_page=${perPage}`
-  );
+  let url = `${API_BASE_URL}/api/study-sessions?page=${page}&per_page=${perPage}`;
+  
+  if (activityId) {
+    url += `&activity_id=${activityId}`;
+  }
+  
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch study sessions');
   }

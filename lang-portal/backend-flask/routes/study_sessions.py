@@ -36,18 +36,20 @@ def load(app):
       page = request.args.get('page', 1, type=int)
       per_page = request.args.get('per_page', 10, type=int)
       offset = (page - 1) * per_page
-
-      # Get total count
-      cursor.execute('''
+      
+      # Get activity filter if provided
+      activity_id = request.args.get('activity_id', type=int)
+      
+      # Base query for counting total sessions
+      count_query = '''
         SELECT COUNT(*) as count 
         FROM study_sessions ss
         JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
-      ''')
-      total_count = cursor.fetchone()['count']
-
-      # Get paginated sessions
-      cursor.execute('''
+      '''
+      
+      # Base query for fetching sessions
+      select_query = '''
         SELECT 
           ss.id,
           ss.group_id,
@@ -62,10 +64,31 @@ def load(app):
         JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
         LEFT JOIN word_review_items wri ON wri.study_session_id = ss.id
+      '''
+      
+      # Add WHERE clause if filtering by activity_id
+      params = []
+      if activity_id:
+        count_query += ' WHERE sa.id = ?'
+        select_query += ' WHERE sa.id = ?'
+        params.append(activity_id)
+      
+      # Complete the select query with GROUP BY, ORDER BY, and LIMIT
+      select_query += '''
         GROUP BY ss.id
         ORDER BY ss.created_at DESC
         LIMIT ? OFFSET ?
-      ''', (per_page, offset))
+      '''
+      
+      # Add pagination parameters
+      params.extend([per_page, offset])
+      
+      # Get total count
+      cursor.execute(count_query, params[:-2] if params else [])
+      total_count = cursor.fetchone()['count']
+
+      # Get paginated sessions
+      cursor.execute(select_query, params)
       sessions = cursor.fetchall()
 
       return jsonify({

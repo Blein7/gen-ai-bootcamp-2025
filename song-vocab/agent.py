@@ -7,12 +7,59 @@ from tools.search_web import search_web
 from tools.get_page_content import get_page_content
 from tools.extract_vocabulary import extract_vocabulary
 from tools.song_id import generate_song_id, get_song_info
+import re
 
 class LyricsAgent:
     def __init__(self):
-        self.client = Client()
+        # Get Ollama host from environment variable with fallback to default
+        ollama_host = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
+        print(f"[Agent] Connecting to Ollama at {ollama_host}")
+        
+        # Add retry logic for client initialization
+        max_init_retries = 10
+        init_retry_count = 0
+        connection_success = False
+        
+        while init_retry_count < max_init_retries and not connection_success:
+            try:
+                print(f"[Agent] Attempt {init_retry_count + 1}/{max_init_retries} to connect to Ollama")
+                self.client = Client(host=ollama_host)
+                
+                # Test connection with a simple ping
+                response = self.client.chat(
+                    model="mistral",
+                    messages=[{"role": "user", "content": "ping"}],
+                    options={"temperature": 0}
+                )
+                if response:
+                    print("[Agent] Successfully connected to Ollama")
+                    connection_success = True
+                else:
+                    raise Exception("No response from Ollama")
+                    
+            except Exception as e:
+                print(f"[Agent] Connection error: {str(e)}")
+                init_retry_count += 1
+                import time
+                time.sleep(5)  # Wait 5 seconds before retrying
+                
+        if not connection_success:
+            print("[Agent] Failed to connect to Ollama after maximum retries")
+            # Still create the client but log the warning
+            self.client = Client(host=ollama_host)
+            
         self.timeout = 30  # 30 seconds timeout for Ollama
         self.max_retries = 3  # Increase retries
+        
+        # Initialize current_data to store state
+        self.current_data = {
+            'lyrics': None, 
+            'vocabulary': None, 
+            'source_url': None, 
+            'search_results': None,
+            'completed_steps': set(),
+            'song_id': None
+        }
         
         # Load the agent prompt
         with open('Prompts/agent_prompt.md', 'r', encoding='utf-8') as f:
@@ -32,6 +79,30 @@ class LyricsAgent:
             os.makedirs('output/lyrics', exist_ok=True)
             filepath = f'output/lyrics/{identifier}.txt'
             print(f"[Agent] Saving lyrics to {filepath}")
+            
+            # Check for placeholder URLs and replace with a default
+            placeholder_patterns = [
+                r'\[.*URL.*\]',
+                r'\[INSERT.*URL.*\]',
+                r'\[PLACE.*HOLDER.*\]',
+                r'\[ACTUAL URL.*\]'
+            ]
+            
+            url_is_placeholder = False
+            for pattern in placeholder_patterns:
+                if re.search(pattern, source_url, re.IGNORECASE):
+                    url_is_placeholder = True
+                    break
+                    
+            if url_is_placeholder:
+                print(f"[Agent] Warning: Detected placeholder URL: {source_url}")
+                if hasattr(self, 'current_data') and self.current_data.get('source_url'):
+                    source_url = self.current_data.get('source_url')
+                    print(f"[Agent] Using backup URL from current_data: {source_url}")
+                else:
+                    source_url = "URL not available"
+                    print(f"[Agent] No backup URL found, using default: {source_url}")
+            
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(f"Source: {source_url}\n\n{lyrics}")
             print(f"[Agent] Successfully saved lyrics ({len(lyrics)} chars)")
@@ -66,8 +137,8 @@ class LyricsAgent:
                     if all(k in cached_data for k in ['song_id', 'lyrics', 'vocabulary', 'source_url']):
                         return {'final_response': cached_data}
             
-            # Prepare request
-            current_data = {
+            # Reset current_data for new request
+            self.current_data = {
                 'lyrics': None, 
                 'vocabulary': None, 
                 'source_url': None, 
@@ -111,7 +182,7 @@ class LyricsAgent:
                     print(content)
                     print("-" * 40)
                     
-                    result = self._process_agent_response(content, current_data)
+                    result = self._process_agent_response(content, self.current_data)
                     print(f"[Agent] Process result: {result}")
                     
                     if 'final_response' in result:
@@ -124,8 +195,24 @@ class LyricsAgent:
                         retry_count += 1
                         
                 except Exception as e:
-                    print(f"[Agent] Error: {str(e)}")
-                    retry_count += 1
+                    error_str = str(e)
+                    print(f"[Agent] Error: {error_str}")
+                    
+                    # Check if model not found error and try to pull it
+                    if "model \"mistral\" not found" in error_str:
+                        try:
+                            print("[Agent] Attempting to pull mistral model...")
+                            pull_response = self.client.pull("mistral")
+                            print(f"[Agent] Pull response: {pull_response}")
+                            # Wait a bit for the model to be ready
+                            import time
+                            time.sleep(10)
+                            # Don't increment retry count, we'll try again
+                        except Exception as pull_err:
+                            print(f"[Agent] Error pulling model: {str(pull_err)}")
+                            retry_count += 1
+                    else:
+                        retry_count += 1
                     
             print("[Agent] Max retries exceeded")
             return {"error": "Max retries exceeded"}
@@ -212,21 +299,21 @@ class LyricsAgent:
         action, action_input = action_pairs[0]
         
         # Check if we already have all required data
-        if all(k in current_data and current_data[k] is not None for k in ['lyrics', 'vocabulary', 'source_url', 'song_id']):
+        if all(k in self.current_data and self.current_data[k] is not None for k in ['lyrics', 'vocabulary', 'source_url', 'song_id']):
             print("[Agent] All required data already collected, returning final identifier")
             return {"final_response": {
-                'song_id': current_data['song_id'],
-                'lyrics': current_data['lyrics'],
-                'vocabulary': current_data['vocabulary'],
-                'source_url': current_data['source_url']
+                'song_id': self.current_data['song_id'],
+                'lyrics': self.current_data['lyrics'],
+                'vocabulary': self.current_data['vocabulary'],
+                'source_url': self.current_data['source_url']
             }}
             
         # Check if this step was already completed
-        if action in current_data.get('completed_steps', set()):
+        if action in self.current_data.get('completed_steps', set()):
             print(f"[Agent] Step {action} already completed, skipping")
             return {"observation": f"Step {action} already completed"}
             
-        return self._execute_tool(action, action_input, current_data)
+        return self._execute_tool(action, action_input, self.current_data)
             
     def _execute_tool(self, action: str, action_input: str, current_data: dict) -> dict:
         """Execute a single tool and return the result"""
@@ -253,26 +340,27 @@ class LyricsAgent:
                             'url': 'https://www.azlyrics.com/lyrics/yoasobi/idol.html'
                         }
                     ]
-                current_data['search_results'] = result
-                current_data['completed_steps'].add(action)
+                self.current_data['search_results'] = result
+                self.current_data['completed_steps'].add(action)
                 return {"observation": f"Found {len(result)} results"}
                 
             elif action == "get_page_content":
-                if not current_data.get('search_results'):
+                if not self.current_data.get('search_results'):
                     return {"error": "Must search for lyrics first"}
                 result = get_page_content(action_input)
                 if result.get('error'):
                     return {"error": result['error']}
-                current_data['lyrics'] = result.get('content', '')
-                current_data['completed_steps'].add(action)
+                self.current_data['lyrics'] = result.get('content', '')
+                self.current_data['source_url'] = action_input  # Store the URL that was successfully used
+                self.current_data['completed_steps'].add(action)
                 return {"observation": f"Got lyrics content"}
                 
             elif action == "extract_vocabulary":
-                if not current_data.get('lyrics'):
+                if not self.current_data.get('lyrics'):
                     return {"error": "No lyrics available for vocabulary extraction"}
-                result = extract_vocabulary(current_data['lyrics'], action_input)
-                current_data['vocabulary'] = result
-                current_data['completed_steps'].add(action)
+                result = extract_vocabulary(self.current_data['lyrics'], action_input)
+                self.current_data['vocabulary'] = result
+                self.current_data['completed_steps'].add(action)
                 return {"observation": f"Extracted {len(result)} vocabulary items"}
                 
             elif action == "generate_song_id":
@@ -283,8 +371,8 @@ class LyricsAgent:
                         artist=params['artist'],
                         language=params['language']
                     )
-                    current_data['song_id'] = result
-                    current_data['completed_steps'].add(action)
+                    self.current_data['song_id'] = result
+                    self.current_data['completed_steps'].add(action)
                     return {"observation": f"Generated song ID: {result}"}
                 except json.JSONDecodeError:
                     return {"error": "Invalid JSON input"}

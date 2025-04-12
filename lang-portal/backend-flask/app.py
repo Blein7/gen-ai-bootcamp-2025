@@ -1,4 +1,4 @@
-from flask import Flask, g
+from flask import Flask, g, jsonify
 from flask_cors import CORS
 
 from lib.db import Db
@@ -40,6 +40,30 @@ def create_app(test_config=None):
     
     # Initialize database first since we need it for CORS configuration
     app.db = Db(database=app.config['DATABASE'])
+    
+    # Health check endpoint to verify DB status
+    @app.route('/api/health')
+    def health_check():
+        try:
+            # Test database connection
+            cursor = app.db.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            
+            # Check if tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [table[0] for table in cursor.fetchall()]
+            
+            return jsonify({
+                "status": "healthy",
+                "database": "connected",
+                "tables": tables
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "unhealthy", 
+                "error": str(e)
+            }), 500
     
     # Get allowed origins from study_activities table
     allowed_origins = get_allowed_origins(app)

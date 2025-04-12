@@ -33,6 +33,7 @@ class AudioGenerator:
         try:
             voices = self.polly_client.describe_voices(LanguageCode='ja-JP')
             available_voices = {voice['Id'] for voice in voices['Voices']}
+            print(f"Available Japanese voices: {available_voices}")
             
             # Default to first available voice if preferred voices not available
             if not any(voice in available_voices for voice in self.voices.values()):
@@ -120,6 +121,11 @@ class AudioGenerator:
     def _generate_audio_segment(self, text: str, output_file: str, voice_id: str) -> bool:
         """Generate audio segment using Amazon Polly"""
         try:
+            # Check if voice_id is available and use Japanese voice if not
+            if voice_id not in ["Takumi", "Mizuki"]:
+                voice_id = self.voices["male"] if voice_id in ["Matthew", "Justin"] else self.voices["female"]
+                print(f"Substituting non-Japanese voice with {voice_id}")
+            
             response = self.polly_client.synthesize_speech(
                 Text=text,
                 OutputFormat='mp3',
@@ -143,21 +149,11 @@ class AudioGenerator:
     def _generate_silence(self, duration_ms: int, output_file: str) -> bool:
         """Generate a silent audio segment using ffmpeg"""
         try:
-            # Find ffmpeg in common locations
-            ffmpeg_locations = [
-                r"C:\Users\User\scoop\shims\ffmpeg.exe",
-                r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
-                r"C:\ffmpeg\bin\ffmpeg.exe"
-            ]
+            # Use Docker container's ffmpeg
+            ffmpeg_path = "/usr/bin/ffmpeg"
             
-            ffmpeg_path = None
-            for location in ffmpeg_locations:
-                if os.path.exists(location):
-                    ffmpeg_path = location
-                    break
-            
-            if not ffmpeg_path:
-                print("ffmpeg not found in common locations")
+            if not os.path.exists(ffmpeg_path):
+                print(f"ffmpeg not found at {ffmpeg_path}")
                 return False
             
             # Generate silence using ffmpeg
@@ -226,21 +222,11 @@ class AudioGenerator:
                     print("File list contents:")
                     print(f.read())
                 
-                # Find ffmpeg in common locations
-                ffmpeg_locations = [
-                    r"C:\Users\User\scoop\shims\ffmpeg.exe",
-                    r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
-                    r"C:\ffmpeg\bin\ffmpeg.exe"
-                ]
+                # Use Docker container's ffmpeg
+                ffmpeg_path = "/usr/bin/ffmpeg"
                 
-                ffmpeg_path = None
-                for location in ffmpeg_locations:
-                    if os.path.exists(location):
-                        ffmpeg_path = location
-                        break
-                
-                if not ffmpeg_path:
-                    print("ffmpeg not found in common locations")
+                if not os.path.exists(ffmpeg_path):
+                    print(f"ffmpeg not found at {ffmpeg_path}")
                     return False
                 
                 # Build the ffmpeg command with proper quoting
@@ -313,30 +299,34 @@ class AudioGenerator:
             # Convert question to conversation format
             conversation = self._convert_to_conversation_format(question)
             if not conversation:
+                print("Failed to convert question to conversation format")
                 return None
             
             audio_files = []
             try:
-                # Generate intro audio with a different voice
-                intro_voice = "Joanna"  # Female voice for intro
+                # Generate intro audio with announcer voice
+                intro_voice = self.voices["announcer"]
                 intro_text = conversation['announcer_intro']
                 intro_file = os.path.join(self.temp_dir, f"intro_{uuid.uuid4()}.mp3")
                 if not self._generate_audio_segment(intro_text, intro_file, intro_voice):
+                    print("Failed to generate intro audio")
                     return None
                 audio_files.append(intro_file)
                 
                 # Add a longer pause (2 seconds) after intro
                 silence_file = os.path.join(self.temp_dir, f"silence_{uuid.uuid4()}.mp3")
                 if not self._generate_silence(2000, silence_file):
+                    print("Failed to generate silence after intro")
                     return None
                 audio_files.append(silence_file)
                 
                 # Generate conversation audio alternating between voices
-                voices = ["Matthew", "Justin"]  # Male voices for conversation
                 for i, segment in enumerate(conversation['conversation'], 1):
-                    voice = voices[i % len(voices)]
+                    gender = segment.get('gender', 'male').lower()
+                    voice = self._get_voice_for_gender(gender)
                     audio_file = os.path.join(self.temp_dir, f"segment_{i}_{uuid.uuid4()}.mp3")
                     if not self._generate_audio_segment(segment['text'], audio_file, voice):
+                        print(f"Failed to generate audio for segment {i}")
                         return None
                     audio_files.append(audio_file)
                     
@@ -344,19 +334,22 @@ class AudioGenerator:
                     if i < len(conversation['conversation']):
                         silence_file = os.path.join(self.temp_dir, f"silence_{i}_{uuid.uuid4()}.mp3")
                         if not self._generate_silence(1000, silence_file):
+                            print("Failed to generate silence between segments")
                             return None
                         audio_files.append(silence_file)
                 
                 # Generate announcer question
-                announcer_question_voice = "Takumi"  # Male voice for announcer question
+                announcer_voice = self.voices["announcer"]
                 announcer_question_text = conversation['announcer_question']
                 announcer_question_file = os.path.join(self.temp_dir, f"announcer_question_{uuid.uuid4()}.mp3")
-                if not self._generate_audio_segment(announcer_question_text, announcer_question_file, announcer_question_voice):
+                if not self._generate_audio_segment(announcer_question_text, announcer_question_file, announcer_voice):
+                    print("Failed to generate announcer question audio")
                     return None
                 audio_files.append(announcer_question_file)
                 
                 # Combine all audio segments
                 if not self._combine_audio_files(audio_files, output_file):
+                    print("Failed to combine audio files")
                     return None
                 
                 return output_file

@@ -20,6 +20,9 @@ COPY bin/ ./bin/
 # Make the message script executable
 RUN chmod +x ./bin/message
 
+# Verify ffmpeg installation
+RUN ffmpeg -version && python -c "import ffmpeg; print('ffmpeg-python package is installed')"
+
 # Expose the port the app runs on
 EXPOSE 8000
 

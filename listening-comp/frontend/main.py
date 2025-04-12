@@ -597,19 +597,19 @@ def main():
     elif selected_stage == "4. RAG Implementation":
         render_rag_stage()
     elif selected_stage == "5. Interactive Learning":
-        # Hide the development UI for interactive learning
-        st.markdown("""
-        <style>
-        /* Hide the development header and description */
-        section.main > div:first-child {display: none}
-        /* Hide the development stages in sidebar */
-        [data-testid="stSidebarNav"] {display: none}
-        /* Hide development stages radio but keep the rest of sidebar */
-        [data-testid="stSidebar"] .stRadio {display: none}
-        [data-testid="stSidebar"] .stMarkdown:first-child {display: none}
-        [data-testid="stSidebar"] hr {display: none}
-        </style>
-        """, unsafe_allow_html=True)
+        # # Hide the development UI for interactive learning
+        # st.markdown("""
+        # <style>
+        # /* Hide the development header and description */
+        # section.main > div:first-child {display: none}
+        # /* Hide the development stages in sidebar */
+        # [data-testid="stSidebarNav"] {display: none}
+        # /* Hide development stages radio but keep the rest of sidebar */
+        # [data-testid="stSidebar"] .stRadio {display: none}
+        # [data-testid="stSidebar"] .stMarkdown:first-child {display: none}
+        # [data-testid="stSidebar"] hr {display: none}
+        # </style>
+        # """, unsafe_allow_html=True)
         render_interactive_stage()
         
         # Add a small reset button at the bottom

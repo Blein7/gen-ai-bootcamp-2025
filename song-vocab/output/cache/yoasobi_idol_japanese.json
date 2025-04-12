@@ -19,20 +19,14 @@
     },
     {
       "kanji": "舞台",
-      "romaji": "buyou-ta",
+      "romaji": "butai",
       "english": "stage",
-      "parts": []
-    },
-    {
-      "kanji": "見てる",
-      "romaji": "mi-te-ru",
-      "english": "seeing",
       "parts": [
         {
-          "kanji": "見",
+          "kanji": "舞台",
           "romaji": [
-            "mi",
-            "miru"
+            "butai",
+            "bujutsu"
           ]
         }
       ]
@@ -40,25 +34,106 @@
     {
       "kanji": "輝く",
       "romaji": "kagayaku",
-      "english": "to shine",
-      "parts": []
+      "english": "shine",
+      "parts": [
+        {
+          "kanji": "輝",
+          "romaji": [
+            "kagayaku"
+          ]
+        },
+        {
+          "kanji": "く",
+          "romaji": [
+            "ku"
+          ]
+        }
+      ]
     },
     {
       "kanji": "アイドル",
       "romaji": "aidoru",
       "english": "idol",
-      "parts": []
+      "parts": [
+        {
+          "kanji": "アイ",
+          "romaji": [
+            "ai"
+          ]
+        },
+        {
+          "kanji": "ドル",
+          "romaji": [
+            "doru"
+          ]
+        }
+      ]
+    },
+    {
+      "kanji": "見てる",
+      "romaji": "miteru",
+      "english": "seeing",
+      "parts": [
+        {
+          "kanji": "み",
+          "romaji": [
+            "mi"
+          ]
+        },
+        {
+          "kanji": "て",
+          "romaji": [
+            "te"
+          ]
+        },
+        {
+          "kanji": "る",
+          "romaji": [
+            "ru"
+          ]
+        }
+      ]
+    },
+    {
+      "kanji": "世界",
+      "romaji": "sekai",
+      "english": "world",
+      "parts": [
+        {
+          "kanji": "世界",
+          "romaji": [
+            "sekai"
+          ]
+        }
+      ]
     },
     {
       "kanji": "見てみたい",
-      "romaji": "mi-te-mitai",
+      "romaji": "mitaitai",
       "english": "want to see",
       "parts": [
         {
           "kanji": "見",
           "romaji": [
-            "mi",
-            "miru"
+            "mi"
+          ]
+        },
+        {
+          "kanji": "て",
+          "romaji": [
+            "te"
+          ]
+        },
+        {
+          "kanji": "見",
+          "romaji": [
+            "mi"
+          ]
+        },
+        {
+          "kanji": "たい",
+          "romaji": [
+            "tai"
           ]
         }
       ]
